@@ -222,6 +222,3 @@ __marimo__/
 # DBT
 integration_tests/dbt_packages/
 integration_tests/target/
-
-# DET Examples
-customer_360/

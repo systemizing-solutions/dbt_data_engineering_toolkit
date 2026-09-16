@@ -19,8 +19,8 @@ from dbt_data_engineering_toolkit_compiler.version import COMPILER_VERSION
 
 
 def verify_tag(tag: str) -> None:
-    expected = f"v{COMPILER_VERSION}"
-    allowed = {expected, COMPILER_VERSION}
+    expected = COMPILER_VERSION
+    allowed = {expected, f"v{COMPILER_VERSION}"}
     if tag not in allowed:
         allowed_list = ", ".join(repr(value) for value in sorted(allowed))
         raise ValueError(f"release tag is {tag!r}; expected one of: {allowed_list}")

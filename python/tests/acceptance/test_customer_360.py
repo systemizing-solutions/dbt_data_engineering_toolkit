@@ -181,7 +181,7 @@ class WorkbookCompilerTests(unittest.TestCase):
             "https://github.com/systemizing-solutions/dbt_data_engineering_toolkit.git",
             packages,
         )
-        self.assertIn(f"revision: v{COMPILER_VERSION}", packages)
+        self.assertIn(f"revision: {COMPILER_VERSION}", packages)
         self.assertIn("subdirectory: aliases/de_toolkit", packages)
         self.assertNotIn("local:", packages)
 

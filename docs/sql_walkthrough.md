@@ -11,9 +11,9 @@ Before Package Hub publication:
 ```yaml
 packages:
   - git: "{{ env_var('DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL') }}"
-    revision: v4.1.1
+    revision: 4.1.1
   - git: "{{ env_var('DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL') }}"
-    revision: v4.1.1
+    revision: 4.1.1
     subdirectory: aliases/de_toolkit
 ```
 {% endraw %}

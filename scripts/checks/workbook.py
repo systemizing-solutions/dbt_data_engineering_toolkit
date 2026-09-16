@@ -126,8 +126,10 @@ def check_workbooks() -> list[str]:
             errors.append(
                 "data_product.xlsx: toolkit Git environment variable is stale"
             )
-        if workbook["DET Build"]["B8"].value != f"v{COMPILER_VERSION}":
-            errors.append(f"data_product.xlsx: toolkit revision must be v{COMPILER_VERSION}")
+        if workbook["DET Build"]["B8"].value not in {COMPILER_VERSION, f"v{COMPILER_VERSION}"}:
+            errors.append(
+                f"data_product.xlsx: toolkit revision must be {COMPILER_VERSION} or v{COMPILER_VERSION}"
+            )
     workbook.close()
     sample = load_workbook(
         compiler / "resources/data_product_sample.xlsx",

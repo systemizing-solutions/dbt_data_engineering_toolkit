@@ -280,10 +280,10 @@ In a clean consumer project, create:
 ```yaml
 packages:
   - git: "{{ env_var('DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL') }}"
-    revision: v4.1.1
+    revision: 4.1.1
     subdirectory: dbt
   - git: "{{ env_var('DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL') }}"
-    revision: v4.1.1
+    revision: 4.1.1
     subdirectory: aliases/de_toolkit
 ```
 
@@ -291,10 +291,10 @@ packages:
 ```yaml
 packages:
   - git: "https://github.com/systemizing-solutions/dbt_data_engineering_toolkit.git"
-    revision: v4.1.1
+    revision: 4.1.1
     subdirectory: dbt
   - git: "https://github.com/systemizing-solutions/dbt_data_engineering_toolkit.git"
-    revision: v4.1.1
+    revision: 4.1.1
     subdirectory: aliases/de_toolkit
 ```
 

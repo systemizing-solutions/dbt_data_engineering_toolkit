@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath
 
 from .paths import COMPILER_VERSION, ROOT
 
-ARCHIVE_ROOT = f"{ROOT.name}-v{COMPILER_VERSION}"
+ARCHIVE_ROOT = f"{ROOT.name}-{COMPILER_VERSION}"
 MAX_ARCHIVE_MEMBER_LENGTH = 180
 WINDOWS_RESERVED_NAMES = {
     "CON",

@@ -259,7 +259,7 @@ def check_project() -> list[str]:
             )
         for required in (
             "DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL",
-            f"revision: v{COMPILER_VERSION}",
+            f"revision: {COMPILER_VERSION}",
             "aliases/de_toolkit",
         ):
             if required not in example_packages:

@@ -69,7 +69,7 @@ def update_workbook_template_version(path: Path) -> None:
             raise ValueError(f"Workbook is missing _DET Metadata: {path}")
         workbook["_DET Metadata"]["B4"] = COMPILER_VERSION
         if "DET Build" in workbook.sheetnames:
-            workbook["DET Build"]["B8"] = f"v{COMPILER_VERSION}"
+            workbook["DET Build"]["B8"] = COMPILER_VERSION
         workbook.save(path)
     finally:
         workbook.close()

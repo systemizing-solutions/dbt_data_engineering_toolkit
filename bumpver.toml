@@ -2,7 +2,7 @@
 current_version = "4.1.1"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
-tag_message = "v{new_version}"
+tag_message = "{new_version}"
 tag_scope = "default"
 pre_commit_hook = "scripts/update_release_fixtures.py"
 post_commit_hook = ""

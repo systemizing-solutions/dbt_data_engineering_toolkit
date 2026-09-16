@@ -701,6 +701,6 @@ spec:
     profile: customer_accounts
     target_schema: main
     toolkit_git_env: DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL
-    toolkit_revision: v4.1.1
+    toolkit_revision: 4.1.1
     allow_many_to_many: false
     contract_test_authority: datacontract

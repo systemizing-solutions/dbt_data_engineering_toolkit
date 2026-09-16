@@ -115,7 +115,11 @@ def run_command(args: list[str]) -> None:
 
 
 def stage_release_outputs() -> None:
-    run_command(["git", "add", "--", *[str(path.relative_to(ROOT)) for path in RELEASE_OUTPUTS]])
+    # Fixture directories are intentionally broad and can match global ignore rules,
+    # so force-add only this explicit allowlist of release outputs.
+    run_command(
+        ["git", "add", "-f", "--", *[str(path.relative_to(ROOT)) for path in RELEASE_OUTPUTS]]
+    )
 
 
 def main() -> int:

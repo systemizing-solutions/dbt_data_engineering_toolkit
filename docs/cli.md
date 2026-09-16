@@ -1,4 +1,4 @@
-# `det` V4.1.1 CLI reference
+# `det` V5.0.0 CLI reference
 
 Run `det --help` or `det <command> --help`. Absolute paths are safest in automation.
 
@@ -41,7 +41,7 @@ det workbook build contracts/orders.xlsx \
   --owner "Sales Analytics" \
   --adapter duckdb \
   --target-schema analytics \
-  --toolkit-revision v4.1.1
+  --toolkit-revision v5.0.0
 ```
 
 `--sample-customer-data` is the only sample-data opt-in. `--force` replaces an existing output
@@ -103,7 +103,7 @@ det workbook refresh contracts/orders.xlsx
 det validate contracts/orders.xlsx
 ```
 
-Refresh accepts the v4.1.1 workbook schema only. Validation returns stable codes with sheet,
+Refresh accepts the v5.0.0 workbook schema only. Validation returns stable codes with sheet,
 row, context, and a corrective hint.
 
 ## Generate, inspect, and prove

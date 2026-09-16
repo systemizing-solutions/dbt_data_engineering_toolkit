@@ -302,7 +302,7 @@ class ToolkitApplication:
         return ApplicationResult.success(
             *(item.render() for item in warnings),
             f"Valid: {spec.metadata.name} ({len(spec.models)} models, "
-            f"{len(spec.mappings)} mapped columns, {len(spec.rules)} rules)"
+            f"{len(spec.mappings)} mapped columns, {len(spec.rules)} rules)",
         )
 
     def compile(

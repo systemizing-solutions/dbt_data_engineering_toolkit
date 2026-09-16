@@ -189,7 +189,11 @@ class MappingValidator:
                     )
                     continue
                 stage = self._RECOMMENDED_STAGES.get(operator.key)
-                if stage is not None and previous_stage is not None and stage[0] < previous_stage[0]:
+                if (
+                    stage is not None
+                    and previous_stage is not None
+                    and stage[0] < previous_stage[0]
+                ):
                     context.add(
                         "DET-MAP-023",
                         DiagnosticCategory.MAPPING,
@@ -320,9 +324,7 @@ class MappingValidator:
             return
         for reference in tree.recursive_crawl("column_reference"):
             parts = [
-                part.strip('"`[]').casefold()
-                for part in reference.raw.split(".")
-                if part.strip()
+                part.strip('"`[]').casefold() for part in reference.raw.split(".") if part.strip()
             ]
             if not parts:
                 continue

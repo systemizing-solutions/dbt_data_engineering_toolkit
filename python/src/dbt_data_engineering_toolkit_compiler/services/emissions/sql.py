@@ -105,9 +105,7 @@ def macro_call(
         if formatting:
             params["format"] = formatting
     elif operator.key == "convert_value":
-        if params.get("data_type") == "numeric" and (
-            "precision" in params or "scale" in params
-        ):
+        if params.get("data_type") == "numeric" and ("precision" in params or "scale" in params):
             params["data_type"] = {
                 "name": "numeric",
                 "precision": params.pop("precision", 38),

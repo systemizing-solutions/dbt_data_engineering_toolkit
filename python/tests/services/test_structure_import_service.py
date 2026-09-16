@@ -48,9 +48,7 @@ class ExcelImportStub:
 
 
 @pytest.mark.parametrize("extension", [".xlsx", ".xlsm"])
-def test_standard_odcs_excel_delegates_to_data_contract_cli(
-    tmp_path: Path, extension: str
-) -> None:
+def test_standard_odcs_excel_delegates_to_data_contract_cli(tmp_path: Path, extension: str) -> None:
     source = tmp_path / f"standard_odcs{extension}"
     source.touch()
     datacontract = ExcelImportStub()

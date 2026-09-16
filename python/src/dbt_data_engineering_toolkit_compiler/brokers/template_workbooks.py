@@ -995,9 +995,7 @@ def build_workbook(
             product_id=destination.stem,
             name=destination.stem.replace("_", " ").replace("-", " ").title(),
         )
-        workbook = load_workbook(
-            destination, keep_vba=destination.suffix.casefold() == ".xlsm"
-        )
+        workbook = load_workbook(destination, keep_vba=destination.suffix.casefold() == ".xlsm")
         _make_blank(workbook, scaffold)
         workbook.save(destination)
         workbook.close()

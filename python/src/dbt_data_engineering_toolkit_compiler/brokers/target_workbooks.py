@@ -425,9 +425,7 @@ def _apply_target_import(
 ) -> None:
     """Merge imported target structures without touching existing mapping decisions."""
 
-    workbook = load_workbook(
-        workbook_path, keep_vba=workbook_path.suffix.casefold() == ".xlsm"
-    )
+    workbook = load_workbook(workbook_path, keep_vba=workbook_path.suffix.casefold() == ".xlsm")
     _apply_product(workbook, product)
     model_sheet = workbook["DET Models"]
     model_rows = {

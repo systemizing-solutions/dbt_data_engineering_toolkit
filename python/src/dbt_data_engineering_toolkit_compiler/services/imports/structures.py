@@ -275,9 +275,7 @@ class StructureImportService:
         if suffix in {".yaml", ".yml"}:
             return self.files.read_text(path)
         if suffix not in {".xlsx", ".xlsm"}:
-            raise ValueError(
-                "--from-contract accepts ODCS .yaml, .yml, .xlsx, or .xlsm files"
-            )
+            raise ValueError("--from-contract accepts ODCS .yaml, .yml, .xlsx, or .xlsm files")
         with tempfile.TemporaryDirectory(prefix="det-odcs-import-") as temporary:
             canonical = Path(temporary) / "canonical.odcs.yaml"
             result = self.datacontract.import_excel(path, canonical)

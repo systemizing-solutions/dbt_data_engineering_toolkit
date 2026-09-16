@@ -194,9 +194,7 @@ def test_yaml_import_preserves_advanced_and_large_passthrough_attributes(
     workbook = load_workbook(toolkit_excel, read_only=True)
     schema_sheet = workbook["Schema orders"]
     headers = {
-        str(cell.value).strip(): cell.column
-        for cell in schema_sheet[13]
-        if cell.value is not None
+        str(cell.value).strip(): cell.column for cell in schema_sheet[13] if cell.value is not None
     }
     assert schema_sheet.cell(14, headers["Transform Logic"]).value == "HASH(source.order_id)"
     assert schema_sheet.cell(14, headers["Transform Description"]).value == (

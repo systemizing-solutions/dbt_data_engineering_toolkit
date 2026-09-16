@@ -47,9 +47,7 @@ class SpecificationValidationService:
         context = ValidationContext.create(specification, self.registry)
         for validator in self.validators:
             validator.validate(context)
-        errors = [
-            item for item in context.diagnostics if item.severity == DiagnosticSeverity.ERROR
-        ]
+        errors = [item for item in context.diagnostics if item.severity == DiagnosticSeverity.ERROR]
         if errors:
             raise SpecificationValidationError(errors)
         return tuple(

@@ -74,9 +74,9 @@ def test_convert_value_is_available_as_an_early_typed_workbook_step() -> None:
     }
 
     validate_specification(specification)
-    model_sql = {
-        item.path.as_posix(): item.content for item in emit_all(specification)
-    }["models/marts/customer_account_mart.sql"]
+    model_sql = {item.path.as_posix(): item.content for item in emit_all(specification)}[
+        "models/marts/customer_account_mart.sql"
+    ]
 
     assert "de_toolkit.convert_value(" in model_sql
     assert "'name': 'numeric'" in model_sql
@@ -169,9 +169,7 @@ def test_refreshed_workbook_guides_but_does_not_restrict_pipeline_order(tmp_path
         mapping = workbook["DET Mapping"]
         assert "guidance, not a restriction" in mapping["A2"].value
         operation_validation = next(
-            item
-            for item in mapping.data_validations.dataValidation
-            if "F4:F100" in str(item.sqref)
+            item for item in mapping.data_validations.dataValidation if "F4:F100" in str(item.sqref)
         )
         assert operation_validation.errorStyle is None
         assert "Alternatives are allowed" in operation_validation.prompt
@@ -181,8 +179,6 @@ def test_refreshed_workbook_guides_but_does_not_restrict_pipeline_order(tmp_path
         }
         assert "Convert value" in transformation_values
         comments = [mapping.cell(row, 6).comment for row in range(4, mapping.max_row + 1)]
-        assert any(
-            comment is not None and "mapping format" in comment.text for comment in comments
-        )
+        assert any(comment is not None and "mapping format" in comment.text for comment in comments)
     finally:
         workbook.close()

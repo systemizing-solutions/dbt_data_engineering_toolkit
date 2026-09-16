@@ -1,4 +1,4 @@
-# V5.0.1 compiler architecture
+# V6.0.0 compiler architecture
 
 The compiler is divided by responsibility so maintainers can extend one concern without
 coupling workbook I/O, validation, generation, or command execution.

@@ -1,6 +1,6 @@
 # Data Engineering Toolkit compiler
 
-The `det` CLI turns the controlled V5.0.1 official-ODCS Excel superset into
+The `det` CLI turns the controlled V6.0.0 official-ODCS Excel superset into
 canonical ODCS, DET execution metadata, and a readable dbt project. It includes
 safe questionnaire-based workbook creation, ODCS/DDL/dbt-to-Excel import and
 merge-safe synchronization, source-schema import, cross-sheet semantic/type
@@ -8,7 +8,7 @@ validation, atomic post-sync generation, Data Contract synchronization, SQLFluff
 and the isolated `det prove` acceptance flow. Data Contract CLI, dbt Core,
 DuckDB, and SQLFluff are default dependencies.
 
-V5.0.1 makes the visible official `Quality` sheet authoritative, preserves
+V6.0.0 makes the visible official `Quality` sheet authoritative, preserves
 advanced per-rule ODCS values, supports eight production warehouse providers, and adds mandatory
 85.01% Python statement coverage. The generated dbt package has 98.53% DuckDB-scoped macro
 implementation coverage plus 100% public-API direct execution coverage and supports dbt Core plus
@@ -21,7 +21,7 @@ emitter owns each artifact family. The CLI remains a thin exposer over
 ## Install
 
 ```bash
-python -m pip install dbt-data-engineering-toolkit-compiler==5.0.1
+python -m pip install dbt-data-engineering-toolkit-compiler==6.0.0
 ```
 
 The default installation includes Data Contract CLI, dbt Core, dbt-duckdb,

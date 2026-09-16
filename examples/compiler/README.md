@@ -5,7 +5,7 @@
 The only hand-maintained file inside the generated project is the example
 `seeds/raw_customers.csv` fixture.
 
-`customer_accounts/` is the V5.0.1 acceptance product generated from
+`customer_accounts/` is the V6.0.0 acceptance product generated from
 `data_product_multi_source_sample.xlsx`. Its two seed files exercise two source
 relations, two models, a many-to-one join, contextual mappings, a lookup,
 multi-step cleaning, synchronized contract tests, warning behavior, and

@@ -1,6 +1,6 @@
-# V4.1.1 quickstart
+# Build your first data product
 
-This creates a blank product, imports a schema, maps it, and produces a checked dbt project.
+Choose the starter path for a working result first. Choose the governed path when you are ready to model a real schema.
 
 ## 1. Install
 
@@ -13,28 +13,40 @@ python -m pip install -e "./python"
 The default install includes Data Contract CLI with Excel support, dbt Core, dbt-duckdb,
 DuckDB, SQLFluff, and the dbt templater.
 
-## 2. Build a safe workbook
+## 2. Scaffold and prove the starter
 
 ```bash
-det workbook build contracts/orders.xlsx --no-input \
-  --product-id orders \
-  --name "Orders" \
-  --domain sales
+det new customer_360
+cd customer_360
+det prove data_product.xlsx --project-dir .
 ```
 
-No demonstration rows, sources, mappings, rules, or lookups are added. Demo content requires the
-explicit `--sample-customer-data` flag.
+The first command creates a validated sample workbook and a generated DuckDB project containing contracts, two models, source definitions, tests, profiles, and documentation. The second command resolves packages and proves contract sync, SQL lint, dbt execution, tests, and evaluation in an isolated copy.
 
-## 3. Import an existing schema, if available
+No package URL configuration is required for the public repository. Set `DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL` only when you need to use a fork or mirror.
+
+## 3. Start a governed product
+
+```bash
+cd ..
+det workbook build contracts/orders.xlsx --no-input \
+    --product-id orders \
+    --name "Orders" \
+    --domain sales
+```
+
+This production-safe path adds no demonstration rows, sources, mappings, rules, or lookups. It uses the same validation, generation, and proof pipeline as the starter.
+
+## 4. Import an existing schema, if available
 
 ```bash
 det workbook import contracts/imported_orders.xlsx --from-contract standard_odcs.xlsx
 ```
 
 You can instead use ODCS YAML, SQL DDL, or a dbt `target/manifest.json`. For a workbook created in
-step 2, use `det source import` to register upstream data and complete the output schema in Excel.
+step 3, use `det source import` to register upstream data and complete the output schema in Excel.
 
-## 4. Complete the workbook
+## 5. Complete the workbook
 
 1. Set product identity and ownership in `Fundamentals`.
 2. Define output fields in `Schema <model>`.
@@ -53,7 +65,7 @@ det workbook refresh contracts/orders.xlsx
 det validate contracts/orders.xlsx
 ```
 
-## 5. Understand the generated SQL
+## 6. Understand the generated SQL
 
 Mappings compile to inline expressions, not a model-level dictionary:
 
@@ -78,7 +90,7 @@ from {{ source('raw', 'customers') }}
 
 Both namespaces are real dbt packages; no per-model Jinja alias is required.
 
-## 6. Generate
+## 7. Generate
 
 ```bash
 det generate contracts/orders.xlsx --project-dir build/orders --dry-run --prune
@@ -88,18 +100,13 @@ det generate contracts/orders.xlsx --project-dir build/orders --prune
 Generation creates ODCS and DET YAML, models, schema YAML, quarantine views, package/profile
 configuration, `.sqlfluff`, a project README, and `.det-manifest.json`.
 
-## 7. Install dbt packages and check
+## 8. Check and prove
 
 ```bash
-export DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL=https://github.com/systemizing-solutions/dbt_data_engineering_toolkit.git
-cd build/orders
-dbt deps --profiles-dir .
-cd ../..
-
 det check contracts/orders.xlsx --project-dir build/orders
 det prove contracts/orders.xlsx --project-dir build/orders
 ```
 
-`dbt deps` creates `dbt_packages/` and normally creates or updates `package-lock.yml`. The dbt
-manifest appears at `build/orders/target/manifest.json` after parse/build. DET's
-`build/orders/.det-manifest.json` is a separate drift ledger.
+`det prove` resolves packages in an isolated copy. The dbt manifest appears in that temporary proof project during execution. DET's `build/orders/.det-manifest.json` remains the persistent drift ledger.
+
+Continue with the [team adoption playbook](adoption.md) for a staged route from the sample product to production governance.

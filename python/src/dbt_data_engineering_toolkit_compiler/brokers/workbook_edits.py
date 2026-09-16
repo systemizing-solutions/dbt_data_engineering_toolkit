@@ -34,7 +34,9 @@ class OpenpyxlWorkbookEditBroker:
         *,
         replace: bool = False,
     ) -> None:
-        workbook = load_workbook(workbook_path)
+        workbook = load_workbook(
+            workbook_path, keep_vba=workbook_path.suffix.casefold() == ".xlsm"
+        )
         source_sheet = cast(Worksheet, workbook["DET Sources"])
         column_sheet = cast(Worksheet, workbook["DET Source Schema"])
         imported_relations = {item.relation for item in sources}

@@ -7,6 +7,17 @@ operators:
     input_types: [any]
     output_type: same
     ba_safe: true
+  - key: convert_value
+    label: Convert value
+    kind: transformation
+    macro: convert_value
+    input_types: [any]
+    output_type: configured
+    ba_safe: true
+    parameters:
+      data_type: {type: choice, values: [string, integer, numeric, date, timestamp, boolean], required: true}
+      precision: {type: integer, required: false, minimum: 1, default: 38}
+      scale: {type: integer, required: false, minimum: 0, default: 6}
   - key: clean_text
     label: Clean text
     kind: transformation

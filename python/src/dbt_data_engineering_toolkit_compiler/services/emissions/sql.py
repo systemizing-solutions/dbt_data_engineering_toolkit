@@ -104,6 +104,18 @@ def macro_call(
             formatting["case"] = params.pop("format_case")
         if formatting:
             params["format"] = formatting
+    elif operator.key == "convert_value":
+        if params.get("data_type") == "numeric" and (
+            "precision" in params or "scale" in params
+        ):
+            params["data_type"] = {
+                "name": "numeric",
+                "precision": params.pop("precision", 38),
+                "scale": params.pop("scale", 6),
+            }
+        else:
+            params.pop("precision", None)
+            params.pop("scale", None)
     elif operator.key == "correct_errors":
         lookup = str(params.pop("lookup"))
         params.pop("case_sensitive", None)
@@ -199,14 +211,22 @@ class ModelSqlEmitter:
             mapped_from = "\n".join(join_lines)
             base_relation = first.left_relation
         else:
-            base_relation = f"source__{model.inputs[0]}"
-            mapped_from = f"    from {base_relation}"
+            base_relation = model.inputs[0]
+            mapped_from = f"    from source__{base_relation} as {base_relation}"
 
         selected: list[str] = []
+        properties = {
+            item.name: item for item in spec.schema_properties if item.object_name == model.name
+        }
         for mapping in mappings:
-            qualifier = mapping.source_relation if relationships else base_relation
-            expression = f"{qualifier}.{mapping.source_field}"
-            if mapping.source_field != mapping.target_field:
+            prop = properties.get(mapping.target_field)
+            transform_logic = prop.odcs_fields.get("transformLogic") if prop else None
+            expression = (
+                transform_logic.strip()
+                if isinstance(transform_logic, str) and transform_logic.strip()
+                else f"{mapping.source_relation}.{mapping.source_field}"
+            )
+            if transform_logic or mapping.source_field != mapping.target_field:
                 expression += f" as {mapping.target_field}"
             selected.append(f"        {expression}")
         ctes.append("mapped as (\n    select\n" + ",\n".join(selected) + f"\n{mapped_from}\n)")

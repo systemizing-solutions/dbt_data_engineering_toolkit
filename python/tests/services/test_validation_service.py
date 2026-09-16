@@ -4,6 +4,7 @@ import pytest
 
 from dbt_data_engineering_toolkit_compiler.errors import (
     DiagnosticCategory,
+    DiagnosticSeverity,
     SpecificationValidationError,
 )
 from dbt_data_engineering_toolkit_compiler.models import (
@@ -30,6 +31,18 @@ class RejectingValidator:
         )
 
 
+class WarningValidator:
+    def validate(self, context: ValidationContext) -> None:
+        context.add(
+            "DET-TST-002",
+            DiagnosticCategory.WORKBOOK,
+            "Workbook",
+            None,
+            "test warning",
+            severity=DiagnosticSeverity.WARNING,
+        )
+
+
 def test_service_aggregates_stable_diagnostics_from_injected_validators() -> None:
     specification = DataProductSpecification(
         metadata=ProductMetadata(product_id="product", name="Product")
@@ -42,3 +55,15 @@ def test_service_aggregates_stable_diagnostics_from_injected_validators() -> Non
     rendered = str(raised.value)
     assert "DET-TST-001" in rendered
     assert "fix the test input" in rendered
+
+
+def test_service_returns_warnings_without_rejecting_the_specification() -> None:
+    specification = DataProductSpecification(
+        metadata=ProductMetadata(product_id="product", name="Product")
+    )
+    service = SpecificationValidationService(validators=(WarningValidator(),))
+
+    warnings = service.validate(specification)
+
+    assert [item.code for item in warnings] == ["DET-TST-002"]
+    assert warnings[0].render().startswith("Warning: DET-TST-002")

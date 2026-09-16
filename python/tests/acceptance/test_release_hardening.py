@@ -13,6 +13,7 @@ from openpyxl import load_workbook
 from dbt_data_engineering_toolkit_compiler.adapters import AdapterRegistry
 from dbt_data_engineering_toolkit_compiler.brokers.template_workbooks import (
     OpenpyxlTemplateWorkbookBroker,
+    WorkbookScaffold,
 )
 from dbt_data_engineering_toolkit_compiler.brokers.workbook_edits import (
     OpenpyxlWorkbookEditBroker,
@@ -68,6 +69,26 @@ def _sample_workbook() -> Path:
             / "data_product_sample.xlsx"
         )
     )
+
+
+def test_refresh_accepts_macro_enabled_workbook(tmp_path: Path) -> None:
+    workbook_path = tmp_path / "data_product.xlsm"
+    shutil.copyfile(_sample_workbook(), workbook_path)
+
+    OpenpyxlTemplateWorkbookBroker().refresh(workbook_path)
+
+    validate_specification(load_specification(workbook_path))
+
+
+def test_build_accepts_macro_enabled_workbook_destination(tmp_path: Path) -> None:
+    workbook_path = tmp_path / "new_product.xlsm"
+
+    OpenpyxlTemplateWorkbookBroker().build(
+        workbook_path,
+        WorkbookScaffold(product_id="new_product", name="New Product"),
+    )
+
+    validate_specification(load_specification(workbook_path))
 
 
 def test_refresh_rejects_a_noncurrent_workbook_schema(tmp_path: Path) -> None:

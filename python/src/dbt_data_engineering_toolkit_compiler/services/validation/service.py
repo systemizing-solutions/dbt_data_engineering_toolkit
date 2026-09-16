@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from ...adapters import AdapterRegistry
-from ...errors import SpecificationValidationError
+from ...errors import Diagnostic, DiagnosticSeverity, SpecificationValidationError
 from ...models import DataProductSpecification
 from ...registry import OperatorRegistry
 from .context import ValidationContext
@@ -43,9 +43,15 @@ class SpecificationValidationService:
             QualityAndBuildValidator(self.adapters),
         )
 
-    def validate(self, specification: DataProductSpecification) -> None:
+    def validate(self, specification: DataProductSpecification) -> tuple[Diagnostic, ...]:
         context = ValidationContext.create(specification, self.registry)
         for validator in self.validators:
             validator.validate(context)
-        if context.diagnostics:
-            raise SpecificationValidationError(context.diagnostics)
+        errors = [
+            item for item in context.diagnostics if item.severity == DiagnosticSeverity.ERROR
+        ]
+        if errors:
+            raise SpecificationValidationError(errors)
+        return tuple(
+            item for item in context.diagnostics if item.severity == DiagnosticSeverity.WARNING
+        )

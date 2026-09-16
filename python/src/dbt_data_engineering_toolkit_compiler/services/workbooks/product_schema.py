@@ -53,7 +53,7 @@ PROPERTY_FIELDS = {
     "Partition Key Position": "partitionKeyPosition",
     "Encrypted Name": "encryptedName",
     "Transform Sources": "transformSourceObjects",
-    "Transform Logic\t": "transformLogic",
+    "Transform Logic": "transformLogic",
     "Transform Description": "transformDescription",
     "Critical Data Element Status": "criticalDataElement",
 }
@@ -192,7 +192,12 @@ class ProductSchemaInterpreter:
     def odcs_passthrough(context: WorkbookParseContext) -> dict[str, JsonValue]:
         if "_DET Raw ODCS" not in context.workbook.sheetnames:
             return {}
-        raw = context.workbook.sheet("_DET Raw ODCS").cell(2, 1)
+        sheet = context.workbook.sheet("_DET Raw ODCS")
+        raw = "".join(
+            str(row[0])
+            for row in sheet.iter_rows(min_row=2)
+            if row and isinstance(row[0], str) and row[0]
+        )
         if not isinstance(raw, str) or not raw.strip():
             return {}
         try:

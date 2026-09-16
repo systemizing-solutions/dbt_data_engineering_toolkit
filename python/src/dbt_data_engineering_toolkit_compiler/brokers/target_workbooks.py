@@ -19,6 +19,8 @@ from ..services.imports.structures import (
 from .template_workbooks import refresh_workbook
 from .workbooks import CellValue
 
+EXCEL_CELL_TEXT_LIMIT = 32_767
+
 
 class TargetWorkbookBroker(Protocol):
     def apply(
@@ -105,7 +107,11 @@ def _apply_product(workbook, product: ImportedProduct) -> None:
             else workbook.create_sheet("_DET Raw ODCS")
         )
         raw["A1"] = "Original imported ODCS; compiler-managed passthrough JSON"
-        raw["A2"] = json.dumps(product.raw_contract, sort_keys=True, default=str)
+        payload = json.dumps(product.raw_contract, sort_keys=True, default=str)
+        for row in range(2, raw.max_row + 1):
+            raw.cell(row, 1).value = None
+        for row, offset in enumerate(range(0, len(payload), EXCEL_CELL_TEXT_LIMIT), start=2):
+            raw.cell(row, 1, payload[offset : offset + EXCEL_CELL_TEXT_LIMIT])
         raw.sheet_state = "veryHidden"
         _apply_contract_metadata(workbook, product.raw_contract)
 
@@ -129,7 +135,7 @@ def _advanced_excel_values(raw: dict[str, object] | None) -> dict[str, CellValue
         "Partition Key Position": raw.get("partitionKeyPosition"),
         "Encrypted Name": raw.get("encryptedName"),
         "Transform Sources": raw.get("transformSourceObjects"),
-        "Transform Logic\t": raw.get("transformLogic"),
+        "Transform Logic": raw.get("transformLogic"),
         "Transform Description": raw.get("transformDescription"),
         "Critical Data Element Status": raw.get("criticalDataElement"),
     }
@@ -249,7 +255,7 @@ def _apply_contract_metadata(workbook, payload: dict[str, object]) -> None:
             item.get("extendedValue"),
             item.get("unit"),
             item.get("element"),
-            item.get("description") or item.get("driver"),
+            item.get("driver"),
         )
         for column, value in enumerate(values, start=1):
             sla.cell(row, column, value)
@@ -419,7 +425,9 @@ def _apply_target_import(
 ) -> None:
     """Merge imported target structures without touching existing mapping decisions."""
 
-    workbook = load_workbook(workbook_path)
+    workbook = load_workbook(
+        workbook_path, keep_vba=workbook_path.suffix.casefold() == ".xlsm"
+    )
     _apply_product(workbook, product)
     model_sheet = workbook["DET Models"]
     model_rows = {

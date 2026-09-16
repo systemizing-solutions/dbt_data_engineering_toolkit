@@ -224,9 +224,9 @@ def _set_instructions(workbook) -> None:
         ),
         (
             "8",
-            "Export package env var, then generate, sync, and lint",
-            "dbt package refs resolve from your published toolkit Git URL",
-            "export DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL=https://github.com/systemizing-solutions/dbt_data_engineering_toolkit.git; det generate ...; dbt deps; det check ...",
+            "Generate, synchronize, and lint",
+            "dbt package refs use the public toolkit URL by default",
+            "det generate ...; det check ...; optionally override DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL for a fork or mirror",
         ),
         (
             "9",
@@ -442,7 +442,15 @@ def _context_lists(
     return references
 
 
-def _validation(sheet, cell_range: str, column: str, length: int) -> None:
+def _validation(
+    sheet,
+    cell_range: str,
+    column: str,
+    length: int,
+    *,
+    prompt: str = "Select a supported value.",
+    prompt_title: str = "Controlled input",
+) -> None:
     if length <= 0:
         return
     validation = DataValidation(
@@ -452,8 +460,8 @@ def _validation(sheet, cell_range: str, column: str, length: int) -> None:
     )
     validation.error = "Choose a value from the controlled list."
     validation.errorTitle = "Unsupported value"
-    validation.prompt = "Select a supported value."
-    validation.promptTitle = "Controlled input"
+    validation.prompt = prompt
+    validation.promptTitle = prompt_title
     validation.showErrorMessage = True
     validation.showInputMessage = True
     sheet.add_data_validation(validation)
@@ -503,7 +511,13 @@ def _operation_parameter_validations(
                     for name in resolved.parameters
                 ]
                 mapping.cell(row, 6).comment = Comment(
-                    "Parameters: " + (", ".join(labels) if labels else "none"),
+                    "Parameters: "
+                    + (", ".join(labels) if labels else "none")
+                    + "\n\nRecommended flow: convert_value/type-aware clean_* -> "
+                    "standardize_*/correct_errors -> mapping -> fill_missing -> derive/conform "
+                    "-> validate/route -> present. "
+                    "This is guidance, not a restriction. Do not use mapping format until the "
+                    "value has finished participating in semantic and business logic.",
                     "DET Compiler",
                 )
     parameters = workbook["DET Parameters"]
@@ -612,6 +626,18 @@ def _protect(sheet, unlocked_ranges: Iterable[str]) -> None:
 
 
 def _configure_business_views(workbook) -> None:
+    mapping = workbook["DET Mapping"]
+    mapping["A1"] = "DET Mapping - ordered transformation pipeline"
+    mapping["A2"] = (
+        "Recommended flow (guidance, not a restriction): scalar ODCS Transform Logic -> "
+        "convert_value / type-aware clean_* -> standardize_* / correct_errors -> mapping -> "
+        "fill_missing -> business derivation / "
+        "target conformance -> validation / routing -> final presentation. Repeat a target field "
+        "with Step 1, 2, 3... Convert or clean according to target intent; do not clean every "
+        "source as text. Use mapping format "
+        "only after semantic and business logic is complete. det validate warns about unusual "
+        "ordering but permits intentional alternatives."
+    )
     quality = workbook["Quality"]
     quality["A1"] = "Quality (ODCS)"
     quality["A2"] = (
@@ -644,11 +670,20 @@ def _configure_business_views(workbook) -> None:
             dimension = sheet.column_dimensions[get_column_letter(column)]
             dimension.hidden = False
             dimension.outlineLevel = 0
-        for start, end in ((10, 13), (15, 38)):
+        for start, end in ((10, 13), (15, 19), (22, 38)):
             for column in range(start, end + 1):
                 dimension = sheet.column_dimensions[get_column_letter(column)]
                 dimension.hidden = True
                 dimension.outlineLevel = 1
+        sheet.cell(13, 20).comment = Comment(
+            "Executable before DET Mapping steps. Enter one scalar SQL expression over fields "
+            "from declared model inputs, for example UPPER(transaction_description). Do not "
+            "enter SELECT, FROM, WHERE, joins, aliases, or multiple statements. det validate "
+            "checks syntax using the configured adapter dialect and verifies column references.",
+            "DET Compiler",
+        )
+        sheet.column_dimensions[get_column_letter(20)].width = 42
+        sheet.column_dimensions[get_column_letter(21)].width = 32
         sheet.sheet_properties.outlinePr.summaryRight = True
         sheet.freeze_panes = "A14"
 
@@ -657,7 +692,7 @@ def refresh_workbook(path: Path) -> None:
     """Refresh registry lists, guided dropdowns, hidden metadata, and protection."""
 
     registry = OperatorRegistry.load()
-    workbook = load_workbook(path)
+    workbook = load_workbook(path, keep_vba=path.suffix.casefold() == ".xlsm")
     if "_DET Metadata" not in workbook.sheetnames:
         workbook.close()
         raise ValueError(
@@ -833,7 +868,17 @@ def refresh_workbook(path: Path) -> None:
         relation_formula_c,
         "Choose a field from the selected source relation.",
     )
-    _validation(mapping, f"F4:F{MAX_INPUT_ROW}", "A", len(columns["A"][1]))
+    _validation(
+        mapping,
+        f"F4:F{MAX_INPUT_ROW}",
+        "A",
+        len(columns["A"][1]),
+        prompt=(
+            "Choose by intent. Recommended: convert/clean -> standardize/correct -> map -> "
+            "default -> derive/conform -> validate/route -> present. Alternatives are allowed."
+        ),
+        prompt_title="Ordered transformation step",
+    )
     params = workbook["DET Parameters"]
     _validation(params, f"A4:A{MAX_INPUT_ROW}", "N", len(model_names))
     _formula_validation(
@@ -950,7 +995,9 @@ def build_workbook(
             product_id=destination.stem,
             name=destination.stem.replace("_", " ").replace("-", " ").title(),
         )
-        workbook = load_workbook(destination)
+        workbook = load_workbook(
+            destination, keep_vba=destination.suffix.casefold() == ".xlsm"
+        )
         _make_blank(workbook, scaffold)
         workbook.save(destination)
         workbook.close()

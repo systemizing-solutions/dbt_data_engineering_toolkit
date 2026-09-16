@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from ...errors import Diagnostic, DiagnosticCategory
+from ...errors import Diagnostic, DiagnosticCategory, DiagnosticSeverity
 from ...models import (
     ColumnMapping,
     DataProductSpecification,
@@ -68,6 +68,7 @@ class ValidationContext:
         row: int | None,
         message: str,
         hint: str | None = None,
+        severity: DiagnosticSeverity = DiagnosticSeverity.ERROR,
         **context: str,
     ) -> None:
         self.diagnostics.append(
@@ -78,6 +79,7 @@ class ValidationContext:
                 hint,
                 code=code,
                 category=category,
+                severity=severity,
                 context=context,
             )
         )

@@ -34,6 +34,7 @@ class RecordingApplication:
 @pytest.mark.parametrize(
     ("argv", "method"),
     [
+        (["init", "product.xlsx", "--no-input", "--no-sample-data"], "build_workbook"),
         (["workbook", "build", "product.xlsx", "--no-input", "--no-sample-data"], "build_workbook"),
         (
             [
@@ -230,6 +231,71 @@ def test_main_maps_owned_failures_to_stable_exit_codes(
     assert cli.main(["validate", "product.xlsx"], application=application) == exit_code
 
     assert str(error) in capsys.readouterr().err
+
+
+def test_init_defaults_to_demo_workbook_for_first_run() -> None:
+    args = cli.build_parser().parse_args(["init", "customer_accounts.xlsx"])
+
+    assert args.command == "init"
+    assert args.output == "customer_accounts.xlsx"
+    assert args.sample_customer_data is True
+
+
+def test_new_scaffolds_a_complete_starter_project(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    application = RecordingApplication()
+
+    exit_code = cli.main(["new", "customer_360"], application=application)
+
+    assert exit_code == 0
+    method, args, kwargs = application.calls[0]
+    assert method == "scaffold_project"
+    assert args[0] == Path("customer_360").resolve()
+    assert kwargs == {"force": False}
+    assert "scaffold_project: ok" in capsys.readouterr().out
+
+
+def test_new_creates_a_valid_generated_project(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "customer_360"
+
+    assert cli.main(["new", str(project)]) == 0
+
+    assert (project / "data_product.xlsx").is_file()
+    assert (project / "dbt_project.yml").is_file()
+    assert (project / "contracts" / "customer_accounts.odcs.yaml").is_file()
+    assert (project / "models" / "staging" / "stg_customers.sql").is_file()
+    assert (project / "seeds" / "raw_customers.csv").is_file()
+    assert (project / "seeds" / "raw_accounts.csv").is_file()
+    output = capsys.readouterr().out
+    assert "Valid: Customer Accounts" in output
+    assert f"cd {project.resolve()}" in output
+    assert "det prove data_product.xlsx --project-dir ." in output
+
+
+def test_new_refuses_to_overwrite_an_existing_directory(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "customer_360"
+    project.mkdir()
+
+    assert cli.main(["new", str(project)]) == 2
+
+    assert "Refusing to overwrite" in capsys.readouterr().err
+    assert not (project / "data_product.xlsx").exists()
+
+
+def test_quickstart_lists_first_success_steps(capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = cli.main(["quickstart"], application=RecordingApplication())
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL" not in output
+    assert "det new customer_360" in output
+    assert "cd customer_360" in output
+    assert "det prove data_product.xlsx --project-dir ." in output
 
 
 def test_source_resolves_contract_ddl_and_manifest_paths() -> None:

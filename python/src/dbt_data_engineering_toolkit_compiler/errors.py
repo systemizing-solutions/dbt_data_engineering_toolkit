@@ -20,6 +20,11 @@ class DiagnosticCategory(StrEnum):
     DEPENDENCY = "dependency"
 
 
+class DiagnosticSeverity(StrEnum):
+    ERROR = "error"
+    WARNING = "warning"
+
+
 @dataclass(frozen=True, slots=True)
 class DiagnosticLocation:
     source: str
@@ -37,6 +42,7 @@ class Diagnostic:
     hint: str | None = None
     code: str = "DET-GEN-001"
     category: DiagnosticCategory = DiagnosticCategory.WORKBOOK
+    severity: DiagnosticSeverity = DiagnosticSeverity.ERROR
     context: dict[str, str] = field(default_factory=dict)
 
     @property
@@ -44,7 +50,8 @@ class Diagnostic:
         return DiagnosticLocation(self.sheet, self.row)
 
     def render(self) -> str:
-        result = f"{self.code} · {self.location.render()}: {self.message}"
+        prefix = "Warning: " if self.severity == DiagnosticSeverity.WARNING else ""
+        result = f"{prefix}{self.code} · {self.location.render()}: {self.message}"
         if self.context:
             details = ", ".join(f"{key}={value}" for key, value in sorted(self.context.items()))
             result = f"{result}\n  Context: {details}"

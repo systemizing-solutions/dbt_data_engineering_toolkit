@@ -53,6 +53,20 @@ No model-level configuration dictionary that has to be decoded before someone ca
 
 Generated models remain readable, reviewable and testable dbt projects.
 
+## Quickstart: your first working data product
+
+If you want the shortest path to a working result, use the starter flow:
+
+```bash
+det new customer_360
+cd customer_360
+det prove data_product.xlsx --project-dir .
+```
+
+`det new` creates and validates a populated starter workbook, then generates a reviewable DuckDB dbt project with contracts, models, tests, profiles, and project documentation. `det prove` installs the pinned packages and runs contract sync, lint, dbt execution, tests, and evaluation in isolation. No package URL configuration is required for the public repository; set `DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL` only to override it.
+
+Use [the team adoption playbook](docs/adoption.md) to progress from this starter to a governed product. For the full workbook workflow, continue with the walkthrough below.
+
 ## Table of contents
 
 - [What is in this repository?](#what-is-in-this-repository)
@@ -104,23 +118,58 @@ They can be used together, but the dbt package can also be used independently.
 The dbt package provides an inline-first API for routine data-engineering work:
 
 ```text
-clean
+define intent
+  → contract transform
+  → convert / interpret
   → standardize
-  → map
-  → convert
-  → format
+  → map / default
+  → derive
+  → conform
   → validate
-  → assert
-  → quarantine
-  → document
-  → evaluate
+  → assert / route
+  → present
 ```
 
 The aim is to provide a **consistent engineering vocabulary** for work that otherwise tends to be implemented slightly differently across projects and engineers.
 
+The sequence is a recommended conceptual flow, not a rigid macro order. Map it to the public API as follows:
+
+| Stage | DET implementation |
+| --- | --- |
+| Define intent | Target schema and the operation chosen for the source value |
+| Contract transform | A validated scalar SQL expression from ODCS `transformLogic`; no `SELECT`, `FROM`, `WHERE`, joins, or multiple statements |
+| Convert / interpret | `convert_value()` or type-aware `clean_string()`, `clean_email()`, `clean_phone()`, `clean_numeric()`, `clean_integer()`, `clean_date()`, `clean_timestamp()`, `clean_boolean()`, or `clean_code()` |
+| Standardize | `standardize_country()`, `standardize_currency()`, and optional `correct_errors()` |
+| Map / default | `mapping()`, then `fill_missing()` or `mapping(default=...)` |
+| Derive | Ordinary SQL expressions or a dedicated transformation macro; validation predicates do not derive values |
+| Conform | Target data type, precision, scale, and canonical value, including `mapping(data_type=...)` or a type-aware `clean_*()` where appropriate |
+| Validate | `is_email()`, `is_positive()`, `is_between()`, `is_in_list()`, `rule_compare()`, and other predicates |
+| Assert / route | `assertions()`, `keep_valid_rows()`, and `keep_quarantined_rows()` |
+| Present | Final string/display formatting, only when representation is part of the target |
+
+Conversion is one of the first executable tasks after defining target intent. Use `convert_value()` when the target type is selected dynamically or a direct generic conversion best expresses the mapping. The type-specific `clean_*()` macros combine conversion with source interpretation and normalization; they are not a preliminary string-cleaning pass. A monetary string should normally go directly through `clean_numeric()`, and a date string through `clean_date()`.
+
+Although `convert_value()` and the `format_*()` macros share `conversion_and_formatting.sql`, they occupy opposite ends of the conceptual flow: conversion establishes a typed value early, while `format_value()`, `format_number()`, and `format_temporal()` publish a display string only after semantic and business logic is complete.
+
+ODCS `transformLogic` is executable when the target field also has a `DET Mapping`. It runs first, before the field's ordered conversion, cleaning, standardization, mapping, and default steps. To keep generated models composable and reviewable, DET accepts exactly one scalar SQL expression over fields from the model's declared inputs. For example:
+
+```sql
+upper(transaction_post_type_description)
+```
+
+Do not put `SELECT`, `FROM`, `WHERE`, joins, aliases, or multiple statements in property-level `transformLogic`. Row filtering is model-level behavior; an allowed-value requirement belongs in Operational Validation when it should flag, warn, or quarantine rows.
+
+`det validate` parses each executable transform using the configured adapter's SQL dialect and rejects unknown or ambiguous input columns. `det check` then runs dbt parse and SQLFluff against the generated project; `det prove` performs isolated execution. Function availability and warehouse runtime behavior ultimately require `det prove` against the selected adapter.
+
+`mapping()` spans several conceptual stages because it can map, default, convert, conform, and format in one expression. Treat `format` as a final presentation operation: do not use it inside `mapping()` while the value still needs date, numeric, semantic, or business logic. Prefer `mapping(data_type='date')`, perform date logic and validation on the resulting date, then format only if the published target genuinely requires text.
+
+The workbook supports multiple ordered `DET Mapping` rows for the same target field. Express the pipeline explicitly as Step 1, Step 2, Step 3, and so on. `det validate` warns when recognized macro families appear outside the recommended sequence, but it does not reject an intentional alternative order; type compatibility and contract conformance remain enforced.
+
 For example:
 
 ```text
+convert_value()
+
 clean_string()
 clean_email()
 clean_phone()
@@ -137,6 +186,14 @@ fill_missing()
 
 is_email()
 is_positive()
+
+assertions()
+keep_valid_rows()
+keep_quarantined_rows()
+
+format_value()
+format_number()
+format_temporal()
 ...
 ```
 

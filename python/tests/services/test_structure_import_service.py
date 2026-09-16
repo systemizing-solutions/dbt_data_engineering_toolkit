@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from dbt_data_engineering_toolkit_compiler.operational import CommandResult
 from dbt_data_engineering_toolkit_compiler.services.imports.structures import (
     StructureFormat,
@@ -45,8 +47,11 @@ class ExcelImportStub:
         raise AssertionError("not used")
 
 
-def test_standard_odcs_excel_delegates_to_data_contract_cli(tmp_path: Path) -> None:
-    source = tmp_path / "standard_odcs.xlsx"
+@pytest.mark.parametrize("extension", [".xlsx", ".xlsm"])
+def test_standard_odcs_excel_delegates_to_data_contract_cli(
+    tmp_path: Path, extension: str
+) -> None:
+    source = tmp_path / f"standard_odcs{extension}"
     source.touch()
     datacontract = ExcelImportStub()
 
@@ -72,6 +77,6 @@ def test_contract_import_rejects_unknown_extension(tmp_path: Path) -> None:
             StructureFormat.ODCS,
         )
     except ValueError as exc:
-        assert ".yaml, .yml, or standard .xlsx" in str(exc)
+        assert ".yaml, .yml, .xlsx, or .xlsm" in str(exc)
     else:
         raise AssertionError("unknown contract extensions must be rejected")

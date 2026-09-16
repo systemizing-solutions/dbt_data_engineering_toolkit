@@ -53,7 +53,12 @@ class ProjectConfigurationEmitter:
             "vars": {"exclude_packages": ["all"]},
             "models": {project_name: model_configuration},
         }
-        git_expression = "{{ env_var('" + spec.build.toolkit_git_env + "') }}"
+        default_git_url = (
+            "https://github.com/systemizing-solutions/dbt_data_engineering_toolkit.git"
+        )
+        git_expression = (
+            "{{ env_var('" + spec.build.toolkit_git_env + "', '" + default_git_url + "') }}"
+        )
         packages = {
             "packages": [
                 {

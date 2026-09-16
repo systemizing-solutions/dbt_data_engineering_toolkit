@@ -105,6 +105,10 @@ def _init(args: argparse.Namespace, app: ToolkitApplication) -> ApplicationResul
     )
 
 
+def _new(args: argparse.Namespace, app: ToolkitApplication) -> ApplicationResult:
+    return app.scaffold_project(Path(args.project_dir).resolve(), force=args.force)
+
+
 def _workbook_import(args: argparse.Namespace, app: ToolkitApplication) -> ApplicationResult:
     source, source_format = _source(args)
     return app.import_workbook(
@@ -204,12 +208,44 @@ def _prove(args: argparse.Namespace, app: ToolkitApplication) -> ApplicationResu
     )
 
 
+def _quickstart(args: argparse.Namespace, app: ToolkitApplication) -> ApplicationResult:
+    steps = (
+        "Quickstart path to your first working product:\n"
+        "  det new customer_360\n"
+        "  cd customer_360\n"
+        "  det prove data_product.xlsx --project-dir .\n\n"
+        "The scaffold contains a validated workbook and a complete reviewable dbt project."
+    )
+    return ApplicationResult.success(steps)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="det",
         description="Compile controlled Excel data products to ODCS and dbt.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
+
+    init = commands.add_parser(
+        "init",
+        help="Create a starter workbook and get to a working first result quickly",
+    )
+    _add_workbook_build_arguments(init)
+    init.set_defaults(handler=_init, sample_customer_data=True)
+
+    new = commands.add_parser(
+        "new",
+        help="Create a complete starter workbook and generated dbt project",
+    )
+    new.add_argument("project_dir")
+    new.add_argument("--force", action="store_true")
+    new.set_defaults(handler=_new)
+
+    quickstart = commands.add_parser(
+        "quickstart",
+        help="Print the fastest path from blank workbook to generated dbt project",
+    )
+    quickstart.set_defaults(handler=_quickstart)
 
     workbook = commands.add_parser("workbook", help="Controlled workbook commands")
     workbook_commands = workbook.add_subparsers(dest="workbook_command", required=True)

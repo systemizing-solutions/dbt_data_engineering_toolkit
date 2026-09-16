@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from ...errors import DiagnosticCategory
+from sqlfluff.core import Linter
+
+from ...adapters import AdapterRegistry
+from ...errors import DiagnosticCategory, DiagnosticSeverity
 from ...models import SchemaImplementation
 from ...registry import OperatorKind
 from .common import (
@@ -17,6 +20,27 @@ from .context import ValidationContext
 
 
 class MappingValidator:
+    _RECOMMENDED_STAGES = {
+        "convert_value": (1, "convert/interpret"),
+        "clean_text": (1, "convert/interpret"),
+        "clean_email": (1, "convert/interpret"),
+        "clean_phone": (1, "convert/interpret"),
+        "clean_numeric": (1, "convert/interpret"),
+        "clean_integer": (1, "convert/interpret"),
+        "clean_date": (1, "convert/interpret"),
+        "clean_timestamp": (1, "convert/interpret"),
+        "clean_boolean": (1, "convert/interpret"),
+        "clean_code": (1, "convert/interpret"),
+        "standardize_country": (2, "standardize"),
+        "standardize_currency": (2, "standardize"),
+        "correct_errors": (2, "standardize"),
+        "map_values": (3, "map"),
+        "fill_missing": (4, "default"),
+        "lower": (9, "present"),
+        "upper": (9, "present"),
+        "title": (9, "present"),
+    }
+
     def validate(self, context: ValidationContext) -> None:
         spec = context.spec
         for mapping in spec.mappings:
@@ -94,6 +118,8 @@ class MappingValidator:
                     row,
                     f"{mapping.model}.{mapping.target_field} is mapped but Schema marks it {prop.implementation.value}",
                 )
+            if prop is not None:
+                self._validate_transform_logic(context, mapping, prop)
 
             available_type = context.relation_fields.get(mapping.source_relation, {}).get(
                 mapping.source_field
@@ -149,7 +175,8 @@ class MappingValidator:
                     row,
                     f"{mapping.model}.{mapping.target_field} has a gap in its step sequence",
                 )
-            for step in mapping.steps:
+            previous_stage: tuple[int, str] | None = None
+            for step_index, step in enumerate(mapping.steps):
                 operator = context.registry.resolve(step.operation)
                 if operator is None or operator.kind != OperatorKind.TRANSFORMATION:
                     context.add(
@@ -161,6 +188,46 @@ class MappingValidator:
                         "Choose an option from the Operation dropdown.",
                     )
                     continue
+                stage = self._RECOMMENDED_STAGES.get(operator.key)
+                if stage is not None and previous_stage is not None and stage[0] < previous_stage[0]:
+                    context.add(
+                        "DET-MAP-023",
+                        DiagnosticCategory.MAPPING,
+                        "DET Mapping",
+                        step.workbook_row,
+                        f"{mapping.model}.{mapping.target_field}: {stage[1]} step "
+                        f'"{operator.label}" follows a {previous_stage[1]} step',
+                        "Recommended flow: convert_value/type-aware clean_* -> "
+                        "standardize_*/correct_errors -> mapping -> fill_missing -> "
+                        "derive/conform -> validate/route -> present. "
+                        "Keep this order when it fits the field; the workbook still permits an "
+                        "intentional alternative.",
+                        severity=DiagnosticSeverity.WARNING,
+                        model=mapping.model,
+                        target=mapping.target_field,
+                    )
+                if stage is not None:
+                    previous_stage = stage
+                if (
+                    operator.key == "map_values"
+                    and ({"format_pattern", "format_case"} & step.parameters.keys())
+                    and step_index < len(mapping.steps) - 1
+                ):
+                    context.add(
+                        "DET-MAP-024",
+                        DiagnosticCategory.MAPPING,
+                        "DET Mapping",
+                        step.workbook_row,
+                        f"{mapping.model}.{mapping.target_field}: mapping formats the value before "
+                        "the transformation pipeline is complete",
+                        "Remove Format Pattern/Format Case from this mapping step, perform later "
+                        "semantic and business logic on the typed value, and format only when the "
+                        "published target requires text. The workbook permits this order when it "
+                        "is intentional.",
+                        severity=DiagnosticSeverity.WARNING,
+                        model=mapping.model,
+                        target=mapping.target_field,
+                    )
                 allowed_inputs = {canonical_type(item) for item in operator.input_types}
                 if "any" not in allowed_inputs and current_type not in allowed_inputs:
                     context.add(
@@ -224,6 +291,80 @@ class MappingValidator:
             self._validate_numeric_shape(context, mapping, prop, current_type)
 
     @staticmethod
+    def _validate_transform_logic(context, mapping, prop) -> None:
+        transform_logic = prop.odcs_fields.get("transformLogic")
+        if not isinstance(transform_logic, str) or not transform_logic.strip():
+            return
+        provider = AdapterRegistry.default().get(context.spec.build.adapter)
+        dialect = provider.sqlfluff_dialect if provider else context.spec.build.adapter
+        parsed = Linter(dialect=dialect).parse_string(
+            f"select ({transform_logic.strip()}) as __det_value"
+        )
+        tree = parsed.tree
+        unparsable = list(tree.recursive_crawl("unparsable")) if tree else []
+        select_count = len(list(tree.recursive_crawl("select_statement"))) if tree else 0
+        if parsed.violations or unparsable or select_count != 1:
+            context.add(
+                "DET-MAP-025",
+                DiagnosticCategory.MAPPING,
+                prop.workbook_sheet or f"Schema {mapping.model}",
+                prop.workbook_row,
+                f"{mapping.model}.{mapping.target_field}: Transform Logic must be one scalar "
+                "SQL expression for the configured adapter",
+                "Use only the value expression here, for example "
+                "UPPER(transaction_post_type_description). Put WHERE filtering in a dedicated "
+                "model or express an allowed-value requirement as Operational Validation.",
+                model=mapping.model,
+                target=mapping.target_field,
+            )
+            return
+        for reference in tree.recursive_crawl("column_reference"):
+            parts = [
+                part.strip('"`[]').casefold()
+                for part in reference.raw.split(".")
+                if part.strip()
+            ]
+            if not parts:
+                continue
+            field = parts[-1]
+            if len(parts) > 1:
+                relation = parts[-2]
+                if relation not in context.spec.model(mapping.model).inputs or field not in (
+                    context.relation_fields.get(relation, {})
+                ):
+                    context.add(
+                        "DET-MAP-026",
+                        DiagnosticCategory.MAPPING,
+                        prop.workbook_sheet or f"Schema {mapping.model}",
+                        prop.workbook_row,
+                        f"{mapping.model}.{mapping.target_field}: Transform Logic references "
+                        f"unknown input column {reference.raw!r}",
+                        "Reference a field declared on one of the model's input relations.",
+                    )
+                continue
+            matches = [
+                relation
+                for relation in context.spec.model(mapping.model).inputs
+                if field in context.relation_fields.get(relation, {})
+            ]
+            if len(matches) == 1:
+                continue
+            problem = "ambiguous" if matches else "unknown"
+            context.add(
+                "DET-MAP-026",
+                DiagnosticCategory.MAPPING,
+                prop.workbook_sheet or f"Schema {mapping.model}",
+                prop.workbook_row,
+                f"{mapping.model}.{mapping.target_field}: Transform Logic references {problem} "
+                f"input column {reference.raw!r}",
+                (
+                    "Qualify the column with its declared input relation."
+                    if matches
+                    else "Reference a field declared on one of the model's input relations."
+                ),
+            )
+
+    @staticmethod
     def _validate_numeric_shape(context, mapping, prop, current_type: str) -> None:
         if prop is None or current_type != "number":
             return
@@ -236,7 +377,7 @@ class MappingValidator:
             operator = context.registry.resolve(step.operation)
             if operator is None:
                 continue
-            defines_numeric = operator.key == "clean_numeric" or (
+            defines_numeric = operator.key in {"clean_numeric", "convert_value"} or (
                 operator.key == "map_values"
                 and canonical_type(str(step.parameters.get("data_type", ""))) == "number"
             )

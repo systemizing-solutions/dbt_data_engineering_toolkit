@@ -210,8 +210,10 @@ class ContractEmitter:
             item["quality"] = quality
         if mapping is not None:
             item["transformSourceObjects"] = [f"{mapping.source_relation}.{mapping.source_field}"]
-            item["transformLogic"] = " -> ".join(step.operation for step in mapping.steps)
-            item["transformDescription"] = (
-                f"Generated as explicit de_toolkit macro calls for {mapping.target_field}."
-            )
+            if not item.get("transformLogic"):
+                item["transformLogic"] = " -> ".join(step.operation for step in mapping.steps)
+            if not item.get("transformDescription"):
+                item["transformDescription"] = (
+                    f"Generated as explicit de_toolkit macro calls for {mapping.target_field}."
+                )
         return {key: value for key, value in item.items() if value is not None}

@@ -13,6 +13,7 @@ from dbt_data_engineering_toolkit_compiler.models import (
     Materialization,
     SchemaImplementation,
     SchemaProperty,
+    TransformationStep,
 )
 from dbt_data_engineering_toolkit_compiler.services.validation.service import (
     SpecificationValidationService,
@@ -124,3 +125,71 @@ def test_missing_lookup_is_rejected() -> None:
     mapping = next(item for item in spec.mappings if item.target_field == "status_label")
     mapping.steps[0].parameters["lookup"] = "missing_status_lookup"
     assert "does not exist" in _diagnostic(spec, "DET-MAP-020")
+
+
+def test_unusual_macro_order_warns_without_rejecting_the_specification() -> None:
+    spec = _spec()
+    mapping = next(item for item in spec.mappings if item.target_field == "status_label")
+    mapping.steps.append(
+        TransformationStep(
+            step=2,
+            operation="clean_code",
+            workbook_row=99,
+        )
+    )
+
+    warnings = SpecificationValidationService().validate(spec)
+
+    assert [item.code for item in warnings] == ["DET-MAP-023"]
+    assert "intentional alternative" in (warnings[0].hint or "")
+
+
+def test_mapping_format_before_a_later_step_warns_without_rejection() -> None:
+    spec = _spec()
+    mapping = next(item for item in spec.mappings if item.target_field == "status_label")
+    mapping.steps[0].parameters["format_case"] = "upper"
+    mapping.steps.append(
+        TransformationStep(
+            step=2,
+            operation="fill_missing",
+            parameters={"value": "UNKNOWN"},
+            workbook_row=99,
+        )
+    )
+
+    warnings = SpecificationValidationService().validate(spec)
+
+    assert [item.code for item in warnings] == ["DET-MAP-024"]
+    assert "format only" in (warnings[0].hint or "")
+
+
+def test_statement_shaped_contract_transform_is_rejected() -> None:
+    spec = _spec()
+    prop = next(
+        item
+        for item in spec.schema_properties
+        if item.object_name == "stg_customers" and item.name == "customer_name"
+    )
+    prop.odcs_fields["transformLogic"] = (
+        "SELECT UPPER(customer_name) AS customer_name "
+        "WHERE UPPER(customer_name) IN ('ALICE', 'BOB')"
+    )
+
+    rendered = _diagnostic(spec, "DET-MAP-025")
+
+    assert "one scalar SQL expression" in rendered
+    assert "UPPER(transaction_post_type_description)" in rendered
+
+
+def test_contract_transform_unknown_input_column_is_rejected() -> None:
+    spec = _spec()
+    prop = next(
+        item
+        for item in spec.schema_properties
+        if item.object_name == "stg_customers" and item.name == "customer_name"
+    )
+    prop.odcs_fields["transformLogic"] = "upper(missing_customer_name)"
+
+    rendered = _diagnostic(spec, "DET-MAP-026")
+
+    assert "unknown input column 'missing_customer_name'" in rendered

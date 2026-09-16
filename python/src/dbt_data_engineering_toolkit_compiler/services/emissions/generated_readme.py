@@ -34,9 +34,9 @@ selects `{spec.build.adapter}` (`{adapter_dependency}`).
 python -m pip install "{compiler_requirement}"
 ```
 
-1. Point the generated two-package dependency graph at the published toolkit
-repository. Both entries are pinned to `{revision}`; the second entry installs
-the short `de_toolkit` namespace from its subdirectory.
+1. The generated two-package dependency graph uses the public toolkit repository by
+default. Both entries are pinned to `{revision}`; the second entry installs the short
+`de_toolkit` namespace from its subdirectory. Set this optional override for a fork or mirror:
 
 ```bash
 export {git_env}=https://github.com/systemizing-solutions/dbt_data_engineering_toolkit.git

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 from dataclasses import replace
 from pathlib import Path
 
@@ -117,6 +118,44 @@ class ToolkitApplication:
         )
         kind = "Customer 360 demonstration" if include_customer_sample else "production-safe blank"
         return ApplicationResult.success(f"Created {kind} workbook: {destination}")
+
+    def scaffold_project(self, destination: Path, *, force: bool = False) -> ApplicationResult:
+        if self.files.exists(destination) and not force:
+            return ApplicationResult.failure(
+                f"Refusing to overwrite {destination}; pass --force after review.",
+                exit_code=2,
+            )
+        workbook = destination / "data_product.xlsx"
+        scaffold = WorkbookScaffold(product_id="customer_accounts", name="Customer Accounts")
+        self.templates.build(
+            workbook,
+            scaffold=scaffold,
+            include_customer_sample=True,
+            force=force,
+        )
+        validation = self.validate(workbook)
+        generation = self.generate(workbook, destination, force=force)
+        self.files.write_text_atomic(
+            destination / "seeds" / "raw_customers.csv",
+            "customer_id,account_id,customer_name,email,status_code\n"
+            "C001,A001, alice smith ,alice@example.com,A\n"
+            "C002,A002,bob jones,not-an-email,I\n"
+            "C003,A003,carol diaz,carol@example.com,A\n",
+        )
+        self.files.write_text_atomic(
+            destination / "seeds" / "raw_accounts.csv",
+            "account_id,account_tier,lifetime_value\n"
+            "A001,gold,1250.50\n"
+            "A002,silver,-25.00\n"
+            "A003,bronze,300.00\n",
+        )
+        return ApplicationResult.success(
+            f"Created starter data product: {destination}",
+            *validation.messages,
+            *generation.messages,
+            f"Next: cd {shlex.quote(str(destination))} "
+            "&& det prove data_product.xlsx --project-dir .",
+        )
 
     def refresh_workbook(self, workbook: Path) -> ApplicationResult:
         self.templates.refresh(workbook)
@@ -258,8 +297,10 @@ class ToolkitApplication:
         )
 
     def validate(self, workbook: Path) -> ApplicationResult:
-        spec = self._validated(workbook)
+        spec = self.workbooks.load(workbook)
+        warnings = self.validator.validate(spec)
         return ApplicationResult.success(
+            *(item.render() for item in warnings),
             f"Valid: {spec.metadata.name} ({len(spec.models)} models, "
             f"{len(spec.mappings)} mapped columns, {len(spec.rules)} rules)"
         )

@@ -177,6 +177,10 @@ class WorkbookCompilerTests(unittest.TestCase):
         self.assertIn("sqlfluff lint models tests --config .sqlfluff", artifacts["Makefile"])
         packages = artifacts["packages.yml"]
         self.assertIn("DBT_DATA_ENGINEERING_TOOLKIT_GIT_URL", packages)
+        self.assertIn(
+            "https://github.com/systemizing-solutions/dbt_data_engineering_toolkit.git",
+            packages,
+        )
         self.assertIn(f"revision: v{COMPILER_VERSION}", packages)
         self.assertIn("subdirectory: aliases/de_toolkit", packages)
         self.assertNotIn("local:", packages)

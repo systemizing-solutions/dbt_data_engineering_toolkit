@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -134,3 +135,101 @@ schema:
     assert schema["quality"][0]["mustBeGreaterThan"] == 0
     assert email["quality"][0]["metric"] == "nullValues"
     assert email["quality"][0]["mustBe"] == 0
+
+
+def test_yaml_import_preserves_advanced_and_large_passthrough_attributes(
+    tmp_path: Path,
+) -> None:
+    source_yaml = tmp_path / "source.odcs.yaml"
+    payload = {
+        "apiVersion": "v3.1.0",
+        "kind": "DataContract",
+        "id": "urn:datacontract:sales:orders",
+        "name": "Orders",
+        "version": "1.0.0",
+        "status": "draft",
+        "x-contract-extension": "x" * 33_000,
+        "slaProperties": [
+            {
+                "property": "freshness",
+                "value": 24,
+                "unit": "hours",
+                "driver": "operational",
+                "description": "Available within one day",
+            }
+        ],
+        "schema": [
+            {
+                "name": "orders",
+                "physicalType": "table",
+                "x-schema-extension": {"owner": "finance"},
+                "properties": [
+                    {
+                        "name": "order_id",
+                        "businessName": "Order ID",
+                        "logicalType": "string",
+                        "physicalType": "varchar",
+                        "required": True,
+                        "primaryKey": True,
+                        "transformLogic": "HASH(source.order_id)",
+                        "transformDescription": "Stable source identifier",
+                        "logicalTypeOptions": {"format": "uuid"},
+                        "x-property-extension": {"lineage": "source.order_id"},
+                    }
+                ],
+            }
+        ],
+    }
+    source_yaml.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+    imported = StructureImportService().load(source_yaml, StructureFormat.ODCS)
+    product, models = imported.as_target()
+    toolkit_excel = tmp_path / "orders.xlsx"
+    build_workbook(
+        toolkit_excel,
+        scaffold=WorkbookScaffold(product_id="orders", name="Orders"),
+    )
+    OpenpyxlTargetWorkbookBroker().apply(toolkit_excel, product, models)
+
+    workbook = load_workbook(toolkit_excel, read_only=True)
+    schema_sheet = workbook["Schema orders"]
+    headers = {
+        str(cell.value).strip(): cell.column
+        for cell in schema_sheet[13]
+        if cell.value is not None
+    }
+    assert schema_sheet.cell(14, headers["Transform Logic"]).value == "HASH(source.order_id)"
+    assert schema_sheet.cell(14, headers["Transform Description"]).value == (
+        "Stable source identifier"
+    )
+    assert schema_sheet.cell(14, headers["Format"]).value == "uuid"
+    assert workbook["SLA"]["F7"].value == "operational"
+    raw_chunks = [
+        row[0].value
+        for row in workbook["_DET Raw ODCS"].iter_rows(min_row=2)
+        if isinstance(row[0].value, str)
+    ]
+    assert len(raw_chunks) > 1
+    assert yaml.safe_load(source_yaml.read_text(encoding="utf-8")) == json.loads(
+        "".join(raw_chunks)
+    )
+    workbook.close()
+
+    specification = WorkbookInterpretationService().load(toolkit_excel)
+    passthrough = specification.odcs_passthrough
+    schema = passthrough["schema"]
+    assert isinstance(schema, list)
+    schema_item = schema[0]
+    assert isinstance(schema_item, dict)
+    properties = schema_item["properties"]
+    assert isinstance(properties, list)
+    order_id = properties[0]
+    assert isinstance(order_id, dict)
+    assert passthrough["x-contract-extension"] == payload["x-contract-extension"]
+    assert schema_item["x-schema-extension"] == {"owner": "finance"}
+    assert order_id["x-property-extension"] == {"lineage": "source.order_id"}
+    assert order_id["transformLogic"] == "HASH(source.order_id)"
+    sla = passthrough["slaProperties"]
+    assert isinstance(sla, list)
+    assert isinstance(sla[0], dict)
+    assert sla[0]["description"] == "Available within one day"

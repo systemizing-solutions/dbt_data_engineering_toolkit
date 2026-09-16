@@ -101,12 +101,16 @@ def test_snowflake_profile_and_types_come_from_the_provider() -> None:
 
 
 def test_generated_project_declares_runtime_floor_and_evaluator_dispatch() -> None:
-    project = _artifacts("duckdb")["dbt_project.yml"]
+    artifacts = _artifacts("duckdb")
+    project = artifacts["dbt_project.yml"]
+    packages = artifacts["packages.yml"]
     assert "require-dbt-version:" in project
     assert "- '>=1.10.6'" in project
     assert "macro_namespace: dbt" in project
     assert "- dbt_project_evaluator" in project
     assert "exclude_packages:" in project
+    assert "subdirectory: dbt" in packages
+    assert "subdirectory: aliases/de_toolkit" in packages
 
 
 def test_spark_provider_installs_the_required_pyhive_transport() -> None:

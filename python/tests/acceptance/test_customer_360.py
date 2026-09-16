@@ -182,6 +182,7 @@ class WorkbookCompilerTests(unittest.TestCase):
             packages,
         )
         self.assertIn(f"revision: {COMPILER_VERSION}", packages)
+        self.assertIn("subdirectory: dbt", packages)
         self.assertIn("subdirectory: aliases/de_toolkit", packages)
         self.assertNotIn("local:", packages)
 

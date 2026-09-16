@@ -64,6 +64,7 @@ class ProjectConfigurationEmitter:
                 {
                     "git": git_expression,
                     "revision": spec.build.toolkit_revision,
+                    "subdirectory": "dbt",
                 },
                 {
                     "git": git_expression,
